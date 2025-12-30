@@ -84,17 +84,20 @@ class MidiWriter:
             val >>= 7
         return bytes(reversed(bytes_list))
 
+    def write_to_stream(self, stream):
+        # Header Chunk
+        stream.write(b'MThd')
+        stream.write(struct.pack('>L', 6)) # Chunk size 6
+        stream.write(struct.pack('>H', 1)) # Format 1 (Multiple tracks)
+        stream.write(struct.pack('>H', len(self.tracks))) # Number of tracks
+        stream.write(struct.pack('>H', self.resolution))
+
+        # Track Chunks
+        for track_data in self.tracks:
+            stream.write(b'MTrk')
+            stream.write(struct.pack('>L', len(track_data)))
+            stream.write(track_data)
+
     def write_file(self, filename):
         with open(filename, 'wb') as f:
-            # Header Chunk
-            f.write(b'MThd')
-            f.write(struct.pack('>L', 6)) # Chunk size 6
-            f.write(struct.pack('>H', 1)) # Format 1 (Multiple tracks)
-            f.write(struct.pack('>H', len(self.tracks))) # Number of tracks
-            f.write(struct.pack('>H', self.resolution))
-
-            # Track Chunks
-            for track_data in self.tracks:
-                f.write(b'MTrk')
-                f.write(struct.pack('>L', len(track_data)))
-                f.write(track_data)
+            self.write_to_stream(f)
