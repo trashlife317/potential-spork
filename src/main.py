@@ -2,9 +2,6 @@ import argparse
 import sys
 import os
 
-# Allow running directly from source directory
-sys.path.append(os.getcwd())
-
 from src.generator import MelodyGenerator
 from src.midi_utils import MidiWriter
 from src.accompaniment import ChordGenerator, DrumGenerator

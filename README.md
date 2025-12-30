@@ -28,10 +28,10 @@ Generate a beat directly from your terminal:
 
 ```bash
 # Basic Melody
-python src/main.py --key C --scale minor --tempo 140
+python -m src.main --key C --scale minor --tempo 140
 
 # Full Beat Starter (Melody + Chords + Drums) to file
-python src/main.py --key F# --scale phrygian --tempo 142 --chords --drums --output fire_beat
+python -m src.main --key F# --scale phrygian --tempo 142 --chords --drums --output fire_beat
 ```
 
 This will create files like `fire_beat_var_B.mid`.
@@ -57,7 +57,7 @@ This will create files like `fire_beat_var_B.mid`.
 To run this as an MCP server for Claude Desktop or other clients:
 
 ```bash
-python src/server.py
+python -m src.server
 ```
 
 Or configure your `claude_desktop_config.json`:
@@ -67,7 +67,8 @@ Or configure your `claude_desktop_config.json`:
   "mcpServers": {
     "beat-composer": {
       "command": "python3",
-      "args": ["/path/to/repo/src/server.py"]
+      "args": ["-m", "src.server"],
+      "cwd": "/path/to/repo"
     }
   }
 }
