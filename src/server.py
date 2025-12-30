@@ -1,6 +1,12 @@
 from mcp.server.fastmcp import FastMCP
 import io
 import base64
+import os
+import sys
+
+# Allow imports from project root when running directly
+sys.path.append(os.getcwd())
+
 from src.generator import MelodyGenerator
 from src.midi_utils import MidiWriter
 from src.accompaniment import ChordGenerator, DrumGenerator
