@@ -1,6 +1,12 @@
 import argparse
 import sys
+import os
+
+# Allow running directly from source directory
+sys.path.append(os.getcwd())
+
 from src.generator import MelodyGenerator
+from src.midi_utils import MidiWriter
 
 def print_melody_table(melody):
     print(f"{'Note':<6} | {'Name':<6} | {'Duration (Beats)':<16} | {'Velocity':<8} | {'Offset':<8}")
@@ -15,6 +21,7 @@ def main():
     parser.add_argument('--scale', type=str, default='minor', help="Scale type (minor, harmonic_minor, phrygian, pentatonic_minor)")
     parser.add_argument('--tempo', type=int, default=140, help="Tempo in BPM")
     parser.add_argument('--bars', type=int, default=4, help="Length in bars")
+    parser.add_argument('--output', type=str, default=None, help="Base filename for MIDI export (e.g., 'melody')")
     parser.add_argument('--interactive', action='store_true', help="Run in interactive mode")
 
     args = parser.parse_args()
@@ -23,6 +30,7 @@ def main():
     scale = args.scale
     tempo = args.tempo
     bars = args.bars
+    output_base = args.output
 
     if args.interactive:
         print("=== MIDI Melody Composer Assistant ===")
@@ -54,8 +62,22 @@ def main():
         melody = generator.generate_variation(var)
         print_melody_table(melody)
 
+        if output_base:
+            filename = f"{output_base}_var_{var}.mid"
+            try:
+                writer = MidiWriter()
+                # MidiWriter expects duration in beats, which matches our melody format
+                writer.add_track(melody, track_name=f"Var {var}")
+                writer.write_file(filename)
+                print(f"-> Saved MIDI file: {filename}")
+            except Exception as e:
+                print(f"Error saving MIDI: {e}")
+
     print("\n=== Implementation Guidance ===")
-    print("1. **DAW Import**: Manually enter the notes above into your Piano Roll, or write a script to convert the data to a .mid file.")
+    if output_base:
+        print("1. **DAW Import**: Drag and drop the generated .mid files into your DAW.")
+    else:
+        print("1. **DAW Import**: Manually enter the notes above into your Piano Roll, or use --output to generate MIDI files.")
     print("2. **Sound Selection**: ")
     print("   - For Variation A: Use a Pluck or Bell sound with some reverb.")
     print("   - For Variation B: Use a fast Synth Lead or aggressive 808-style bass synth.")

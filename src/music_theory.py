@@ -81,3 +81,29 @@ def get_note_name(midi_number):
 def analyze_interval(note1, note2):
     """Returns the interval in semitones."""
     return abs(note1 - note2)
+
+def is_stable_scale_degree(midi_note, root_note_name, scale_type):
+    """Checks if a note is the Tonic, 3rd (mediant), or 5th (dominant) of the scale."""
+    try:
+        root_idx = get_note_index(root_note_name)
+    except:
+        root_idx = 0
+
+    note_chromatic_idx = midi_note % 12
+    interval_from_root = (note_chromatic_idx - root_idx) % 12
+
+    # Stable degrees: 0 (Tonic), 7 (Dominant)
+    # 3rd depends on scale (Major=4, Minor=3)
+
+    scale_key = scale_type.lower().replace(' ', '_')
+    is_major = 'major' in scale_key and 'minor' not in scale_key # Simple check
+
+    if interval_from_root == 0 or interval_from_root == 7:
+        return True
+
+    if is_major and interval_from_root == 4:
+        return True
+    if not is_major and interval_from_root == 3:
+        return True
+
+    return False

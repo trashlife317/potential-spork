@@ -1,5 +1,5 @@
 import random
-from src.music_theory import get_scale_notes, get_note_name, analyze_interval
+from src.music_theory import get_scale_notes, get_note_name, analyze_interval, is_stable_scale_degree
 
 class MelodyGenerator:
     def __init__(self, key, scale_type, tempo, length_bars=4, time_signature='4/4', range_octaves=(3, 5)):
@@ -71,6 +71,32 @@ class MelodyGenerator:
 
         return pattern
 
+    def generate_phrase_structure(self, total_bars):
+        """Generates a list of rhythm patterns for full length based on structure."""
+        bar_rhythm_A = self.generate_rhythm_pattern(self.beats_per_bar, style='trap')
+        bar_rhythm_B = self.generate_rhythm_pattern(self.beats_per_bar, style='trap')
+
+        full_rhythm = []
+        # Common structure: A A B A or A B A C
+        structure_type = random.choice(['AABA', 'ABAB'])
+
+        for char in structure_type:
+            if char == 'A':
+                full_rhythm.extend(bar_rhythm_A)
+            elif char == 'B':
+                full_rhythm.extend(bar_rhythm_B)
+            else:
+                 full_rhythm.extend(self.generate_rhythm_pattern(self.beats_per_bar, style='trap'))
+
+        # Adjust for total bars if not 4
+        if total_bars != 4:
+            # Fallback simple repeat
+            full_rhythm = []
+            for _ in range(total_bars):
+                full_rhythm.extend(bar_rhythm_A)
+
+        return full_rhythm
+
     def apply_voice_leading(self, current_note, target_note=None, variation='A'):
         """
         Selects the next note based on voice leading rules.
@@ -105,11 +131,8 @@ class MelodyGenerator:
         melody = []
 
         # 1. Determine Rhythm
-        # Create a 1-bar or 2-bar rhythm and repeat it
-        bar_rhythm = self.generate_rhythm_pattern(self.beats_per_bar, style='trap' if variation_type=='B' else 'hiphop')
-        full_rhythm = []
-        for _ in range(self.length_bars):
-            full_rhythm.extend(bar_rhythm) # Repeat rhythm for coherence
+        # Use structured phrasing for better musicality
+        full_rhythm = self.generate_phrase_structure(self.length_bars)
 
         # 2. Generate Notes
         current_note = self.scale_notes[len(self.scale_notes) // 2] # Start mid-range
@@ -121,27 +144,50 @@ class MelodyGenerator:
             motif_idx = 0
 
         time_cursor = 0.0
+        total_duration = sum(full_rhythm)
+        current_beat = 0.0
 
-        for dur in full_rhythm:
+        for i, dur in enumerate(full_rhythm):
             velocity = random.randint(80, 110)
-            offset = 0.0
+
+            # End of phrase resolution detection
+            is_end_of_phrase = (i == len(full_rhythm) - 1) or (current_beat + dur) % (self.beats_per_bar * 4) == 0
 
             # Note Selection
             if variation_type == 'C' and motif:
-                # Use motif note, possibly transposed
-                # Simple implementation: just cycle the motif notes
-                # but adjust to nearest scale tone if we were transposing (not doing complex transposition here)
+                # Use motif note, cycling
                 note = motif[motif_idx % len(motif)]
                 motif_idx += 1
-                # Occasionally vary it
-                if random.random() < 0.2:
-                    note = self.apply_voice_leading(note, variation=variation_type)
+
+                # Transpose motif every 2 bars?
+                if int(current_beat / (self.beats_per_bar * 2)) % 2 == 1:
+                     # Simple diatonic transposition (shift index in scale)
+                     try:
+                         orig_idx = self.scale_notes.index(note)
+                         new_idx = min(len(self.scale_notes)-1, orig_idx + 2) # Shift up a third
+                         note = self.scale_notes[new_idx]
+                     except:
+                         pass
+
             else:
                 note = self.apply_voice_leading(current_note, variation=variation_type)
 
+            # Enforce Resolution at end of phrase
+            if is_end_of_phrase:
+                # Try to find nearest stable tone
+                closest_stable = note
+                min_dist = 100
+                for sn in self.scale_notes:
+                    if is_stable_scale_degree(sn, self.key, self.scale_type):
+                         dist = abs(sn - note)
+                         if dist < min_dist:
+                             min_dist = dist
+                             closest_stable = sn
+                note = closest_stable
+
             # Rest logic (Trap leaves space)
             is_rest = False
-            if variation_type == 'B' and random.random() < 0.2:
+            if variation_type == 'B' and random.random() < 0.2 and not is_end_of_phrase:
                  is_rest = True
 
             if not is_rest:
@@ -159,6 +205,7 @@ class MelodyGenerator:
                 current_note = note
 
             time_cursor += dur
+            current_beat += dur
 
         return melody
 
