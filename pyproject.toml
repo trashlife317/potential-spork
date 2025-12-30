@@ -1,0 +1,12 @@
+[project]
+name = "midi-composer-server"
+version = "0.1.0"
+description = "MCP Server for MIDI Beat Generation"
+dependencies = [
+    "mcp[cli]>=0.1.0"
+]
+requires-python = ">=3.10"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
