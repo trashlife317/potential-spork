@@ -7,6 +7,7 @@ sys.path.append(os.getcwd())
 
 from src.generator import MelodyGenerator
 from src.midi_utils import MidiWriter
+from src.accompaniment import ChordGenerator, DrumGenerator
 
 def print_melody_table(melody):
     print(f"{'Note':<6} | {'Name':<6} | {'Duration (Beats)':<16} | {'Velocity':<8} | {'Offset':<8}")
@@ -22,6 +23,8 @@ def main():
     parser.add_argument('--tempo', type=int, default=140, help="Tempo in BPM")
     parser.add_argument('--bars', type=int, default=4, help="Length in bars")
     parser.add_argument('--output', type=str, default=None, help="Base filename for MIDI export (e.g., 'melody')")
+    parser.add_argument('--chords', action='store_true', help="Include chord progression in output")
+    parser.add_argument('--drums', action='store_true', help="Include drum pattern in output")
     parser.add_argument('--interactive', action='store_true', help="Run in interactive mode")
 
     args = parser.parse_args()
@@ -31,6 +34,8 @@ def main():
     tempo = args.tempo
     bars = args.bars
     output_base = args.output
+    add_chords = args.chords
+    add_drums = args.drums
 
     if args.interactive:
         print("=== MIDI Melody Composer Assistant ===")
@@ -44,7 +49,12 @@ def main():
             tempo = 140
             bars = 4
 
-    print(f"\nGenerating Melody for: Key={key} {scale}, Tempo={tempo} BPM, Length={bars} Bars")
+        c = input("Add Chords? (y/n): ")
+        if c.lower() == 'y': add_chords = True
+        d = input("Add Drums? (y/n): ")
+        if d.lower() == 'y': add_drums = True
+
+    print(f"\nGenerating Beat Starter for: Key={key} {scale}, Tempo={tempo} BPM, Length={bars} Bars")
 
     try:
         generator = MelodyGenerator(key, scale, tempo, length_bars=bars)
@@ -66,10 +76,35 @@ def main():
             filename = f"{output_base}_var_{var}.mid"
             try:
                 writer = MidiWriter()
-                # MidiWriter expects duration in beats, which matches our melody format
-                writer.add_track(melody, track_name=f"Var {var}")
+                # 1. Melody Track (Channel 0)
+                writer.add_track(melody, track_name=f"Melody Var {var}", channel=0)
+
+                # 2. Chords Track (Channel 1)
+                if add_chords:
+                    chord_gen = ChordGenerator(key, scale)
+                    progression_notes = chord_gen.generate_progression(bars)
+                    # Convert to event list
+                    chord_events = []
+                    for bar_idx, notes in enumerate(progression_notes):
+                        for n in notes:
+                            chord_events.append({
+                                'note': n,
+                                'duration': 4.0, # Whole note chords
+                                'velocity': 80,
+                                'offset': bar_idx * 4.0
+                            })
+                    writer.add_track(chord_events, track_name="Chords", channel=1)
+                    print("   + Added Chords Track")
+
+                # 3. Drums Track (Channel 9)
+                if add_drums:
+                    drum_gen = DrumGenerator(tempo)
+                    drum_events = drum_gen.generate_pattern(bars)
+                    writer.add_track(drum_events, track_name="Drums", channel=9)
+                    print("   + Added Drums Track")
+
                 writer.write_file(filename)
-                print(f"-> Saved MIDI file: {filename}")
+                print(f"-> Saved Multi-track MIDI file: {filename}")
             except Exception as e:
                 print(f"Error saving MIDI: {e}")
 

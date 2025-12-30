@@ -8,9 +8,10 @@ class MidiWriter:
         self.tracks = []
         self.resolution = 480 # Ticks per quarter note
 
-    def add_track(self, notes, track_name="Melody"):
+    def add_track(self, notes, track_name="Melody", channel=0):
         """
         notes: list of dicts {'note': int, 'duration': float (beats), 'velocity': int, 'offset': float}
+        channel: MIDI channel (0-15). Channel 9 is usually Percussion.
         """
         track_data = bytearray()
 
@@ -19,9 +20,6 @@ class MidiWriter:
         name_bytes = text_to_bytes(track_name)
         track_data.append(len(name_bytes))
         track_data.extend(name_bytes)
-
-        # Tempo (Default 120, but we can set it. For simplicity, we stick to default or add meta event later)
-        # Time Signature (Default 4/4)
 
         # Convert absolute offsets to delta times
         # Sort notes by start time just in case
@@ -52,7 +50,6 @@ class MidiWriter:
         events.sort(key=lambda x: x['tick'])
 
         last_tick = 0
-        running_status = None
 
         for ev in events:
             delta = ev['tick'] - last_tick
@@ -63,12 +60,12 @@ class MidiWriter:
 
             # Event Type
             if ev['type'] == 'on':
-                status = 0x90 # Channel 0 Note On
+                status = 0x90 | (channel & 0x0F) # Note On + Channel
                 track_data.append(status)
                 track_data.append(ev['note'])
                 track_data.append(ev['velocity'])
             else:
-                status = 0x80 # Channel 0 Note Off
+                status = 0x80 | (channel & 0x0F) # Note Off + Channel
                 track_data.append(status)
                 track_data.append(ev['note'])
                 track_data.append(ev['velocity'])
