@@ -2,6 +2,10 @@ import argparse
 import sys
 import os
 
+from rich.console import Console
+from rich.table import Table
+from rich.markdown import Markdown
+
 # Allow running directly from source directory
 sys.path.append(os.getcwd())
 
@@ -9,12 +13,25 @@ from src.generator import MelodyGenerator
 from src.midi_utils import MidiWriter
 from src.accompaniment import ChordGenerator, DrumGenerator
 
-def print_melody_table(melody):
-    print(f"{'Note':<6} | {'Name':<6} | {'Duration (Beats)':<16} | {'Velocity':<8} | {'Offset':<8}")
-    print("-" * 60)
+console = Console()
+
+def print_melody_table(melody, title="Melody Data"):
+    table = Table(title=title, show_header=True, header_style="bold magenta")
+    table.add_column("Note", justify="right", style="cyan")
+    table.add_column("Name", justify="center", style="green")
+    table.add_column("Duration", justify="right")
+    table.add_column("Velocity", justify="right", style="yellow")
+    table.add_column("Offset", justify="right", style="blue")
+
     for note in melody:
-        print(f"{note['note']:<6} | {note['name']:<6} | {note['duration']:<16.2f} | {note['velocity']:<8} | {note['offset']:<8.2f}")
-    print("-" * 60)
+        table.add_row(
+            str(note['note']),
+            note['name'],
+            f"{note['duration']:.2f}",
+            str(note['velocity']),
+            f"{note['offset']:.2f}"
+        )
+    console.print(table)
 
 def main():
     parser = argparse.ArgumentParser(description="Hip-Hop/Trap MIDI Melody Generator")
@@ -38,14 +55,14 @@ def main():
     add_drums = args.drums
 
     if args.interactive:
-        print("=== MIDI Melody Composer Assistant ===")
+        console.print("[bold cyan]=== MIDI Melody Composer Assistant ===[/bold cyan]")
         key = input("Key (default C): ") or "C"
         scale = input("Scale (minor, harmonic_minor, phrygian, pentatonic_minor) [default minor]: ") or "minor"
         try:
             tempo = int(input("Tempo BPM (default 140): ") or "140")
             bars = int(input("Length in bars (default 4): ") or "4")
         except ValueError:
-            print("Invalid number input, using defaults.")
+            console.print("[bold red]Invalid number input, using defaults.[/bold red]")
             tempo = 140
             bars = 4
 
@@ -54,23 +71,23 @@ def main():
         d = input("Add Drums? (y/n): ")
         if d.lower() == 'y': add_drums = True
 
-    print(f"\nGenerating Beat Starter for: Key={key} {scale}, Tempo={tempo} BPM, Length={bars} Bars")
+    console.print(f"\n[bold green]Generating Beat Starter for:[/bold green] Key={key} {scale}, Tempo={tempo} BPM, Length={bars} Bars")
 
     try:
         generator = MelodyGenerator(key, scale, tempo, length_bars=bars)
     except Exception as e:
-        print(f"Error initializing generator: {e}")
+        console.print(f"[bold red]Error initializing generator:[/bold red] {e}")
         return
 
     variations = ['A', 'B', 'C']
 
     for var in variations:
-        print(f"\n=== Variation {var} ===")
+        console.print(f"\n[bold underline]=== Variation {var} ===[/bold underline]")
         explanation = generator.get_theory_explanation(var)
-        print(explanation)
-        print("\nMIDI Output:")
+        console.print(Markdown(explanation))
+
         melody = generator.generate_variation(var)
-        print_melody_table(melody)
+        print_melody_table(melody, title=f"MIDI Output - Variation {var}")
 
         if output_base:
             filename = f"{output_base}_var_{var}.mid"
@@ -94,30 +111,30 @@ def main():
                                 'offset': bar_idx * 4.0
                             })
                     writer.add_track(chord_events, track_name="Chords", channel=1)
-                    print("   + Added Chords Track")
+                    console.print("   [green]+ Added Chords Track[/green]")
 
                 # 3. Drums Track (Channel 9)
                 if add_drums:
                     drum_gen = DrumGenerator(tempo)
                     drum_events = drum_gen.generate_pattern(bars)
                     writer.add_track(drum_events, track_name="Drums", channel=9)
-                    print("   + Added Drums Track")
+                    console.print("   [green]+ Added Drums Track[/green]")
 
                 writer.write_file(filename)
-                print(f"-> Saved Multi-track MIDI file: {filename}")
+                console.print(f"[bold blue]-> Saved Multi-track MIDI file:[/bold blue] {filename}")
             except Exception as e:
-                print(f"Error saving MIDI: {e}")
+                console.print(f"[bold red]Error saving MIDI:[/bold red] {e}")
 
-    print("\n=== Implementation Guidance ===")
+    console.print("\n[bold]=== Implementation Guidance ===[/bold]")
     if output_base:
-        print("1. **DAW Import**: Drag and drop the generated .mid files into your DAW.")
+        console.print("1. [bold]DAW Import[/bold]: Drag and drop the generated .mid files into your DAW.")
     else:
-        print("1. **DAW Import**: Manually enter the notes above into your Piano Roll, or use --output to generate MIDI files.")
-    print("2. **Sound Selection**: ")
-    print("   - For Variation A: Use a Pluck or Bell sound with some reverb.")
-    print("   - For Variation B: Use a fast Synth Lead or aggressive 808-style bass synth.")
-    print("   - For Variation C: Good for Keys or Pads.")
-    print("3. **Processing**: Add Half-time effect (Gross Beat) for Trap feel. Add Delay (1/4 or 1/8 dot) to fill space.")
+        console.print("1. [bold]DAW Import[/bold]: Manually enter the notes above into your Piano Roll, or use --output to generate MIDI files.")
+    console.print("2. [bold]Sound Selection[/bold]: ")
+    console.print("   - For Variation A: Use a Pluck or Bell sound with some reverb.")
+    console.print("   - For Variation B: Use a fast Synth Lead or aggressive 808-style bass synth.")
+    console.print("   - For Variation C: Good for Keys or Pads.")
+    console.print("3. [bold]Processing[/bold]: Add Half-time effect (Gross Beat) for Trap feel. Add Delay (1/4 or 1/8 dot) to fill space.")
 
 if __name__ == "__main__":
     main()
