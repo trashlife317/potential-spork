@@ -1,6 +1,22 @@
 
 NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
+# Pre-calculate indices for O(1) lookup
+NOTE_INDICES = {note: i for i, note in enumerate(NOTES)}
+
+# Normalize map
+_NORM_MAP = {
+    'DB': 'C#', 'EB': 'D#', 'GB': 'F#', 'AB': 'G#', 'BB': 'A#',
+    'Db': 'C#', 'Eb': 'D#', 'Gb': 'F#', 'Ab': 'G#', 'Bb': 'A#',
+    # Common flats that might be passed
+    'db': 'C#', 'eb': 'D#', 'gb': 'F#', 'ab': 'G#', 'bb': 'A#'
+}
+
+# Add normalized keys to NOTE_INDICES
+for k, v in _NORM_MAP.items():
+    if v in NOTE_INDICES:
+        NOTE_INDICES[k] = NOTE_INDICES[v]
+
 # Scale intervals (semitones from root)
 SCALES = {
     'major': [0, 2, 4, 5, 7, 9, 11],
@@ -15,25 +31,22 @@ SCALES = {
 
 def get_note_index(note_name):
     """Returns the index of the note in the chromatic scale (0-11)."""
-    # Normalize (e.g., Db -> C#)
-    norm_map = {'DB':'C#', 'EB':'D#', 'GB':'F#', 'AB':'G#', 'BB':'A#',
-                'Db':'C#', 'Eb':'D#', 'Gb':'F#', 'Ab':'G#', 'Bb':'A#'}
+    # Fast path: O(1) lookup
+    idx = NOTE_INDICES.get(note_name)
+    if idx is not None:
+        return idx
 
-    # Handle simple flats
+    # Try capitalizing (e.g. 'c#' -> 'C#', 'db' -> 'Db')
+    idx = NOTE_INDICES.get(note_name.capitalize())
+    if idx is not None:
+        return idx
+
+    # Handle simple flats manually if not in map (edge cases)
     if len(note_name) == 2 and note_name[1] == 'b':
-         if note_name in norm_map:
-             note_name = norm_map[note_name]
+        # This case is mostly covered by _NORM_MAP but just in case
+        pass
 
-    note_name = note_name.capitalize()
-    if note_name in norm_map:
-        note_name = norm_map[note_name]
-
-    if note_name not in NOTES:
-        # Try finding it directly
-        if note_name in NOTES:
-            return NOTES.index(note_name)
-        raise ValueError(f"Invalid note name: {note_name}")
-    return NOTES.index(note_name)
+    raise ValueError(f"Invalid note name: {note_name}")
 
 def get_scale_notes(root_note, scale_type, start_octave=3, end_octave=5):
     """Returns a list of MIDI numbers for the scale across specified octaves."""
@@ -53,22 +66,16 @@ def get_scale_notes(root_note, scale_type, start_octave=3, end_octave=5):
     # Loop through octaves
     for octave in range(start_octave, end_octave + 1):
         # MIDI note 0 is C-1. C4 is 60.
-        # C0 is 12.
-        # root_idx 0 (C) at octave 3 -> C3 -> 48?
-        # Standard: Middle C = C4 = 60.
-        # C(-1) = 0.
-        # C0 = 12
-        # C1 = 24
-        # C2 = 36
-        # C3 = 48
-        # C4 = 60
+        # C-1=0, C0=12, C1=24, C2=36, C3=48
         root_midi = root_idx + (octave + 1) * 12
         for interval in intervals:
             midi_note = root_midi + interval
             if 0 <= midi_note <= 127:
                 midi_notes.append(midi_note)
 
-    return sorted(list(set(midi_notes)))
+    # Since intervals are sorted and octaves are increasing,
+    # midi_notes is already sorted and unique.
+    return midi_notes
 
 def get_note_name(midi_number):
     """Converts MIDI number to Note Name (e.g., 60 -> C4)."""
@@ -96,14 +103,17 @@ def is_stable_scale_degree(midi_note, root_note_name, scale_type):
     # 3rd depends on scale (Major=4, Minor=3)
 
     scale_key = scale_type.lower().replace(' ', '_')
-    is_major = 'major' in scale_key and 'minor' not in scale_key # Simple check
+    # Optimization: Check string presence only once if needed, or rely on interval logic
+    is_major = 'major' in scale_key and 'minor' not in scale_key
 
     if interval_from_root == 0 or interval_from_root == 7:
         return True
 
-    if is_major and interval_from_root == 4:
-        return True
-    if not is_major and interval_from_root == 3:
-        return True
+    if is_major:
+        if interval_from_root == 4:
+            return True
+    else:
+        if interval_from_root == 3:
+            return True
 
     return False
