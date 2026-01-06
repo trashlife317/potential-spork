@@ -13,6 +13,9 @@ class MelodyGenerator:
         # Get valid notes for the scale
         self.scale_notes = get_scale_notes(key, scale_type, range_octaves[0], range_octaves[1])
 
+        # Pre-calculate stable notes (Tonic, 3rd, 5th) to avoid repeated calculations in generation loop
+        self.stable_notes = [n for n in self.scale_notes if is_stable_scale_degree(n, key, scale_type)]
+
         # Parsing time signature
         try:
             num, den = map(int, time_signature.split('/'))
@@ -177,12 +180,11 @@ class MelodyGenerator:
                 # Try to find nearest stable tone
                 closest_stable = note
                 min_dist = 100
-                for sn in self.scale_notes:
-                    if is_stable_scale_degree(sn, self.key, self.scale_type):
-                         dist = abs(sn - note)
-                         if dist < min_dist:
-                             min_dist = dist
-                             closest_stable = sn
+                for sn in self.stable_notes:
+                    dist = abs(sn - note)
+                    if dist < min_dist:
+                        min_dist = dist
+                        closest_stable = sn
                 note = closest_stable
 
             # Rest logic (Trap leaves space)
