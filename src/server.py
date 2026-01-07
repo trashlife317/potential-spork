@@ -4,9 +4,6 @@ import base64
 import os
 import sys
 
-# Allow imports from project root when running directly
-sys.path.append(os.getcwd())
-
 from src.generator import MelodyGenerator
 from src.midi_utils import MidiWriter
 from src.accompaniment import ChordGenerator, DrumGenerator
@@ -15,7 +12,7 @@ from src.accompaniment import ChordGenerator, DrumGenerator
 mcp = FastMCP("Beat Starter Composer")
 
 @mcp.tool()
-def generate_beat(key: str = "C", scale: str = "minor", tempo: int = 140, bars: int = 4, variation: str = "B", add_chords: bool = True, add_drums: bool = True) -> str:
+def generate_beat(key: str = "C", scale: str = "minor", tempo: int = 140, bars: int = 4, variation: str = "B", add_chords: bool = True, add_drums: bool = True, seed: int = None) -> str:
     """
     Generates a MIDI beat starter with optional chords and drums.
     Returns a base64 encoded MIDI string.
@@ -28,10 +25,11 @@ def generate_beat(key: str = "C", scale: str = "minor", tempo: int = 140, bars: 
         variation: Melody style ('A' for Smooth, 'B' for Trap, 'C' for Motivic).
         add_chords: Whether to include a backing chord progression.
         add_drums: Whether to include a drum pattern.
+        seed: Optional integer for deterministic generation.
     """
 
     # 1. Generate Melody
-    generator = MelodyGenerator(key, scale, tempo, length_bars=bars)
+    generator = MelodyGenerator(key, scale, tempo, length_bars=bars, seed=seed)
     melody = generator.generate_variation(variation)
 
     writer = MidiWriter()
@@ -41,7 +39,7 @@ def generate_beat(key: str = "C", scale: str = "minor", tempo: int = 140, bars: 
 
     # Track 2: Chords (Channel 1)
     if add_chords:
-        chord_gen = ChordGenerator(key, scale)
+        chord_gen = ChordGenerator(key, scale, seed=seed)
         progression_notes = chord_gen.generate_progression(bars)
         chord_events = []
         for bar_idx, notes in enumerate(progression_notes):
@@ -56,7 +54,7 @@ def generate_beat(key: str = "C", scale: str = "minor", tempo: int = 140, bars: 
 
     # Track 3: Drums (Channel 9)
     if add_drums:
-        drum_gen = DrumGenerator(tempo)
+        drum_gen = DrumGenerator(tempo, seed=seed)
         drum_events = drum_gen.generate_pattern(bars)
         writer.add_track(drum_events, track_name="Drums", channel=9)
 
