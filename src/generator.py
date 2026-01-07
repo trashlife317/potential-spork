@@ -22,6 +22,12 @@ class MelodyGenerator:
         self.beat_unit = den # usually 4
         self.total_beats = self.length_bars * self.beats_per_bar
 
+        # Pre-calculate stable notes (Tonic, 3rd, 5th) to avoid repeated calculation in loops
+        self.stable_notes = [
+            note for note in self.scale_notes
+            if is_stable_scale_degree(note, self.key, self.scale_type)
+        ]
+
     def generate_motif(self, length_in_notes=4):
         """Generates a short seed motif."""
         motif = []
@@ -177,12 +183,12 @@ class MelodyGenerator:
                 # Try to find nearest stable tone
                 closest_stable = note
                 min_dist = 100
-                for sn in self.scale_notes:
-                    if is_stable_scale_degree(sn, self.key, self.scale_type):
-                         dist = abs(sn - note)
-                         if dist < min_dist:
-                             min_dist = dist
-                             closest_stable = sn
+                # Use pre-calculated stable_notes for O(1) lookup set instead of re-calculating O(N)
+                for sn in self.stable_notes:
+                    dist = abs(sn - note)
+                    if dist < min_dist:
+                        min_dist = dist
+                        closest_stable = sn
                 note = closest_stable
 
             # Rest logic (Trap leaves space)
