@@ -6,9 +6,6 @@ from rich.console import Console
 from rich.table import Table
 from rich.markdown import Markdown
 
-# Allow running directly from source directory
-sys.path.append(os.getcwd())
-
 from src.generator import MelodyGenerator
 from src.midi_utils import MidiWriter
 from src.accompaniment import ChordGenerator, DrumGenerator
@@ -43,6 +40,7 @@ def main():
     parser.add_argument('--chords', action='store_true', help="Include chord progression in output")
     parser.add_argument('--drums', action='store_true', help="Include drum pattern in output")
     parser.add_argument('--interactive', action='store_true', help="Run in interactive mode")
+    parser.add_argument('--seed', type=int, default=None, help="Random seed for reproducible generation")
 
     args = parser.parse_args()
 
@@ -53,6 +51,7 @@ def main():
     output_base = args.output
     add_chords = args.chords
     add_drums = args.drums
+    seed = args.seed
 
     if args.interactive:
         console.print("[bold cyan]=== MIDI Melody Composer Assistant ===[/bold cyan]")
@@ -71,10 +70,19 @@ def main():
         d = input("Add Drums? (y/n): ")
         if d.lower() == 'y': add_drums = True
 
+        s = input("Random Seed (optional): ")
+        if s:
+            try:
+                seed = int(s)
+            except ValueError:
+                pass
+
     console.print(f"\n[bold green]Generating Beat Starter for:[/bold green] Key={key} {scale}, Tempo={tempo} BPM, Length={bars} Bars")
+    if seed is not None:
+        console.print(f"[dim]Using random seed: {seed}[/dim]")
 
     try:
-        generator = MelodyGenerator(key, scale, tempo, length_bars=bars)
+        generator = MelodyGenerator(key, scale, tempo, length_bars=bars, seed=seed)
     except Exception as e:
         console.print(f"[bold red]Error initializing generator:[/bold red] {e}")
         return
@@ -90,6 +98,12 @@ def main():
         print_melody_table(melody, title=f"MIDI Output - Variation {var}")
 
         if output_base:
+            # Sanitize output base to prevent path traversal
+            safe_output = os.path.basename(output_base)
+            if output_base != safe_output:
+                console.print(f"[bold yellow]Warning:[/bold yellow] Path components removed from output filename. Using '{safe_output}'.")
+                output_base = safe_output
+
             filename = f"{output_base}_var_{var}.mid"
             try:
                 writer = MidiWriter()
@@ -98,7 +112,7 @@ def main():
 
                 # 2. Chords Track (Channel 1)
                 if add_chords:
-                    chord_gen = ChordGenerator(key, scale)
+                    chord_gen = ChordGenerator(key, scale, seed=seed)
                     progression_notes = chord_gen.generate_progression(bars)
                     # Convert to event list
                     chord_events = []
@@ -115,7 +129,7 @@ def main():
 
                 # 3. Drums Track (Channel 9)
                 if add_drums:
-                    drum_gen = DrumGenerator(tempo)
+                    drum_gen = DrumGenerator(tempo, seed=seed)
                     drum_events = drum_gen.generate_pattern(bars)
                     writer.add_track(drum_events, track_name="Drums", channel=9)
                     console.print("   [green]+ Added Drums Track[/green]")
