@@ -5,7 +5,10 @@ import os
 import sys
 
 # Allow imports from project root when running directly
-sys.path.append(os.getcwd())
+# Security: Use absolute path to project root instead of os.getcwd() to prevent path injection
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if project_root not in sys.path:
+    sys.path.append(project_root)
 
 from src.generator import MelodyGenerator
 from src.midi_utils import MidiWriter
