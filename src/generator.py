@@ -2,13 +2,16 @@ import random
 from src.music_theory import get_scale_notes, get_note_name, analyze_interval, is_stable_scale_degree
 
 class MelodyGenerator:
-    def __init__(self, key, scale_type, tempo, length_bars=4, time_signature='4/4', range_octaves=(3, 5)):
+    def __init__(self, key, scale_type, tempo, length_bars=4, time_signature='4/4', range_octaves=(3, 5), seed=None):
         self.key = key
         self.scale_type = scale_type
         self.tempo = tempo
         self.length_bars = length_bars
         self.time_signature = time_signature
         self.range_octaves = range_octaves
+
+        # Initialize random generator
+        self.rng = random.Random(seed)
 
         # Get valid notes for the scale
         self.scale_notes = get_scale_notes(key, scale_type, range_octaves[0], range_octaves[1])
@@ -33,7 +36,7 @@ class MelodyGenerator:
 
         for _ in range(length_in_notes):
             # Prefer small steps
-            step = random.choices([-2, -1, 0, 1, 2, 3, -3], weights=[1, 4, 2, 4, 1, 0.5, 0.5])[0]
+            step = self.rng.choices([-2, -1, 0, 1, 2, 3, -3], weights=[1, 4, 2, 4, 1, 0.5, 0.5])[0]
             current_index = max(0, min(len(self.scale_notes) - 1, current_index + step))
             motif.append(self.scale_notes[current_index])
 
@@ -59,7 +62,7 @@ class MelodyGenerator:
             weights = [30, 30, 30, 10]
 
         while beats_filled < num_beats:
-            dur = random.choices(durations, weights=weights)[0]
+            dur = self.rng.choices(durations, weights=weights)[0]
             # check if it fits
             if beats_filled + dur > num_beats:
                 dur = num_beats - beats_filled
@@ -80,7 +83,7 @@ class MelodyGenerator:
 
         full_rhythm = []
         # Common structure: A A B A or A B A C
-        structure_type = random.choice(['AABA', 'ABAB'])
+        structure_type = self.rng.choice(['AABA', 'ABAB'])
 
         for char in structure_type:
             if char == 'A':
@@ -121,7 +124,7 @@ class MelodyGenerator:
             steps = [-1, 1, -2, 2, 0]
             weights = [3, 3, 1, 1, 1]
 
-        step = random.choices(steps, weights=weights)[0]
+        step = self.rng.choices(steps, weights=weights)[0]
         next_idx = max(0, min(len(self.scale_notes) - 1, curr_idx + step))
         return self.scale_notes[next_idx]
 
@@ -150,7 +153,7 @@ class MelodyGenerator:
         current_beat = 0.0
 
         for i, dur in enumerate(full_rhythm):
-            velocity = random.randint(80, 110)
+            velocity = self.rng.randint(80, 110)
 
             # End of phrase resolution detection
             is_end_of_phrase = (i == len(full_rhythm) - 1) or (current_beat + dur) % (self.beats_per_bar * 4) == 0
@@ -188,13 +191,13 @@ class MelodyGenerator:
 
             # Rest logic (Trap leaves space)
             is_rest = False
-            if variation_type == 'B' and random.random() < 0.2 and not is_end_of_phrase:
+            if variation_type == 'B' and self.rng.random() < 0.2 and not is_end_of_phrase:
                  is_rest = True
 
             if not is_rest:
                 # Humanize
                 if variation_type == 'B': # Trap - rigid timing or triplets, high velocity variation
-                     velocity = random.choice([100, 110, 120, 60]) # Accent patterns
+                     velocity = self.rng.choice([100, 110, 120, 60]) # Accent patterns
 
                 melody.append({
                     'note': note,

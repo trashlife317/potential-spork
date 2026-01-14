@@ -2,9 +2,10 @@ import random
 from src.music_theory import get_scale_notes, get_note_index
 
 class ChordGenerator:
-    def __init__(self, key, scale_type):
+    def __init__(self, key, scale_type, seed=None):
         self.key = key
         self.scale_type = scale_type
+        self.rng = random.Random(seed)
         self.scale_notes = get_scale_notes(key, scale_type, start_octave=3, end_octave=4)
         # We need a way to build chords from scale degrees
         # Simple mapping of scale degree (0-6) to MIDI note index
@@ -48,7 +49,7 @@ class ChordGenerator:
             [1, 2, 1, 5], # i - ii - i - v (Phrygian-ish if ii is flattened)
         ]
 
-        prog = random.choice(progressions)
+        prog = self.rng.choice(progressions)
 
         # Extend or truncate to length_bars
         result = []
@@ -60,8 +61,9 @@ class ChordGenerator:
         return result
 
 class DrumGenerator:
-    def __init__(self, tempo):
+    def __init__(self, tempo, seed=None):
         self.tempo = tempo
+        self.rng = random.Random(seed)
 
     def generate_pattern(self, length_bars=4):
         """
@@ -82,19 +84,19 @@ class DrumGenerator:
                 # i * 0.5
                 beat = i * 0.5
                 # Random Rolls (32nd notes)
-                if random.random() < 0.15: # 15% chance of roll
+                if self.rng.random() < 0.15: # 15% chance of roll
                     for r in range(4):
                         events.append({
                             'note': 42,
                             'duration': 0.125,
-                            'velocity': random.randint(70, 90),
+                            'velocity': self.rng.randint(70, 90),
                             'offset': bar_offset + beat + (r * 0.125)
                         })
                 else:
                     events.append({
                         'note': 42,
                         'duration': 0.5,
-                        'velocity': random.randint(80, 100),
+                        'velocity': self.rng.randint(80, 100),
                         'offset': bar_offset + beat
                     })
 
@@ -112,7 +114,7 @@ class DrumGenerator:
             # Add random kicks
             possible_spots = [1.5, 2.5, 3.0, 3.5]
             for spot in possible_spots:
-                if random.random() < 0.4:
+                if self.rng.random() < 0.4:
                     kick_beats.append(spot)
 
             for kb in kick_beats:
