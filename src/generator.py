@@ -15,6 +15,9 @@ class MelodyGenerator:
         # Pre-calculate stable notes for performance
         self.stable_notes = [n for n in self.scale_notes if is_stable_scale_degree(n, key, scale_type)]
 
+        # Pre-calculate stable notes (Tonic, 3rd, 5th) to avoid repeated calculations in generation loop
+        self.stable_notes = [n for n in self.scale_notes if is_stable_scale_degree(n, key, scale_type)]
+
         # Parsing time signature
         try:
             num, den = map(int, time_signature.split('/'))
