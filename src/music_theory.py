@@ -1,6 +1,13 @@
 
 NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
+# Pre-calculate lookups for O(1) access
+NOTE_TO_INDEX = {note: i for i, note in enumerate(NOTES)}
+NOTE_NORM_MAP = {
+    'DB':'C#', 'EB':'D#', 'GB':'F#', 'AB':'G#', 'BB':'A#',
+    'Db':'C#', 'Eb':'D#', 'Gb':'F#', 'Ab':'G#', 'Bb':'A#'
+}
+
 # Scale intervals (semitones from root)
 SCALES = {
     'major': [0, 2, 4, 5, 7, 9, 11],
@@ -15,25 +22,26 @@ SCALES = {
 
 def get_note_index(note_name):
     """Returns the index of the note in the chromatic scale (0-11)."""
+    # Quick lookup if exact match
+    if note_name in NOTE_TO_INDEX:
+        return NOTE_TO_INDEX[note_name]
+
     # Normalize (e.g., Db -> C#)
-    norm_map = {'DB':'C#', 'EB':'D#', 'GB':'F#', 'AB':'G#', 'BB':'A#',
-                'Db':'C#', 'Eb':'D#', 'Gb':'F#', 'Ab':'G#', 'Bb':'A#'}
+    if note_name in NOTE_NORM_MAP:
+        note_name = NOTE_NORM_MAP[note_name]
 
-    # Handle simple flats
-    if len(note_name) == 2 and note_name[1] == 'b':
-         if note_name in norm_map:
-             note_name = norm_map[note_name]
+    # Try capitalizing
+    if note_name not in NOTE_TO_INDEX:
+        capitalized = note_name.capitalize()
+        if capitalized in NOTE_NORM_MAP:
+            note_name = NOTE_NORM_MAP[capitalized]
+        elif capitalized in NOTE_TO_INDEX:
+            note_name = capitalized
 
-    note_name = note_name.capitalize()
-    if note_name in norm_map:
-        note_name = norm_map[note_name]
+    if note_name in NOTE_TO_INDEX:
+        return NOTE_TO_INDEX[note_name]
 
-    if note_name not in NOTES:
-        # Try finding it directly
-        if note_name in NOTES:
-            return NOTES.index(note_name)
-        raise ValueError(f"Invalid note name: {note_name}")
-    return NOTES.index(note_name)
+    raise ValueError(f"Invalid note name: {note_name}")
 
 def get_scale_notes(root_note, scale_type, start_octave=3, end_octave=5):
     """Returns a list of MIDI numbers for the scale across specified octaves."""
@@ -68,7 +76,9 @@ def get_scale_notes(root_note, scale_type, start_octave=3, end_octave=5):
             if 0 <= midi_note <= 127:
                 midi_notes.append(midi_note)
 
-    return sorted(list(set(midi_notes)))
+    # Since we append in order of octaves and intervals are sorted,
+    # midi_notes is already sorted. Just return it.
+    return midi_notes
 
 def get_note_name(midi_number):
     """Converts MIDI number to Note Name (e.g., 60 -> C4)."""
