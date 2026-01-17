@@ -6,9 +6,10 @@ class ChordGenerator:
         self.key = key
         self.scale_type = scale_type
         self.scale_notes = get_scale_notes(key, scale_type, start_octave=3, end_octave=4)
+        # Pre-calculate full scale range to avoid re-computing in generation loop
+        self.full_scale = get_scale_notes(key, scale_type, start_octave=3, end_octave=5)
         # We need a way to build chords from scale degrees
         # Simple mapping of scale degree (0-6) to MIDI note index
-        # This is tricky because self.scale_notes spans octaves.
         # Let's get one octave of scale notes for degree mapping.
         self.single_octave = get_scale_notes(key, scale_type, start_octave=3, end_octave=3)
 
@@ -23,8 +24,8 @@ class ChordGenerator:
         # If the index wrapped around, it means we went up an octave?
         # Ideally we just pick from the large scale list.
 
-        # Better approach:
-        full_scale = get_scale_notes(self.key, self.scale_type, start_octave=3, end_octave=5)
+        # Use pre-calculated full scale
+        full_scale = self.full_scale
         # Find the root note in the full scale (first occurrence)
         start_pos = 0
         # If degree is 1, start_pos is 0. If degree is 2, start_pos is 1.
