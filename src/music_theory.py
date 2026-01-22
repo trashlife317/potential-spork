@@ -13,27 +13,38 @@ SCALES = {
     'blues': [0, 3, 5, 6, 7, 10] # Minor Blues
 }
 
+
+def _build_note_index_map():
+    idx_map = {}
+
+    # 1. Add canonical notes (C, C#, D...) and their case variants
+    for i, note in enumerate(NOTES):
+        # Use a set to handle potential duplicates (e.g. if upper() == note)
+        for variant in {note, note.lower(), note.upper(), note.capitalize()}:
+            idx_map[variant] = i
+
+    # 2. Add flat equivalents
+    enharmonic_map = {
+        'Db': 'C#', 'Eb': 'D#', 'Gb': 'F#', 'Ab': 'G#', 'Bb': 'A#'
+    }
+
+    for flat, sharp in enharmonic_map.items():
+        if sharp in idx_map:
+            idx = idx_map[sharp]
+            for variant in {flat, flat.lower(), flat.upper(), flat.capitalize()}:
+                idx_map[variant] = idx
+
+    return idx_map
+
+NOTE_TO_INDEX = _build_note_index_map()
+
+
 def get_note_index(note_name):
     """Returns the index of the note in the chromatic scale (0-11)."""
-    # Normalize (e.g., Db -> C#)
-    norm_map = {'DB':'C#', 'EB':'D#', 'GB':'F#', 'AB':'G#', 'BB':'A#',
-                'Db':'C#', 'Eb':'D#', 'Gb':'F#', 'Ab':'G#', 'Bb':'A#'}
+    if note_name in NOTE_TO_INDEX:
+        return NOTE_TO_INDEX[note_name]
 
-    # Handle simple flats
-    if len(note_name) == 2 and note_name[1] == 'b':
-         if note_name in norm_map:
-             note_name = norm_map[note_name]
-
-    note_name = note_name.capitalize()
-    if note_name in norm_map:
-        note_name = norm_map[note_name]
-
-    if note_name not in NOTES:
-        # Try finding it directly
-        if note_name in NOTES:
-            return NOTES.index(note_name)
-        raise ValueError(f"Invalid note name: {note_name}")
-    return NOTES.index(note_name)
+    raise ValueError(f"Invalid note name: {note_name}")
 
 def get_scale_notes(root_note, scale_type, start_octave=3, end_octave=5):
     """Returns a list of MIDI numbers for the scale across specified octaves."""
