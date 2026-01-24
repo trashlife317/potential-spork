@@ -1,6 +1,25 @@
 
 NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
+# Pre-calculate index map for O(1) lookup
+NOTE_TO_INDEX = {}
+for i, note in enumerate(NOTES):
+    NOTE_TO_INDEX[note] = i
+    NOTE_TO_INDEX[note.lower()] = i
+    NOTE_TO_INDEX[note.upper()] = i
+
+# Add flat equivalents
+# Db -> C# (1), Eb -> D# (3), Gb -> F# (6), Ab -> G# (8), Bb -> A# (10)
+FLAT_MAPPING = {
+    'Db': 1, 'Eb': 3, 'Gb': 6, 'Ab': 8, 'Bb': 10
+}
+for flat_note, idx in FLAT_MAPPING.items():
+    NOTE_TO_INDEX[flat_note] = idx
+    NOTE_TO_INDEX[flat_note.lower()] = idx
+    NOTE_TO_INDEX[flat_note.upper()] = idx
+    # Ensure capitalized version (e.g. 'Db') is set (already covered by keys, but safe)
+    NOTE_TO_INDEX[flat_note.capitalize()] = idx
+
 # Scale intervals (semitones from root)
 SCALES = {
     'major': [0, 2, 4, 5, 7, 9, 11],
@@ -15,25 +34,17 @@ SCALES = {
 
 def get_note_index(note_name):
     """Returns the index of the note in the chromatic scale (0-11)."""
-    # Normalize (e.g., Db -> C#)
-    norm_map = {'DB':'C#', 'EB':'D#', 'GB':'F#', 'AB':'G#', 'BB':'A#',
-                'Db':'C#', 'Eb':'D#', 'Gb':'F#', 'Ab':'G#', 'Bb':'A#'}
+    # Optimized lookup
+    try:
+        return NOTE_TO_INDEX[note_name]
+    except KeyError:
+        # Fallback for mixed case (e.g., 'dB', 'c#') if not caught by direct lookup
+        try:
+             return NOTE_TO_INDEX[note_name.capitalize()]
+        except KeyError:
+             pass
 
-    # Handle simple flats
-    if len(note_name) == 2 and note_name[1] == 'b':
-         if note_name in norm_map:
-             note_name = norm_map[note_name]
-
-    note_name = note_name.capitalize()
-    if note_name in norm_map:
-        note_name = norm_map[note_name]
-
-    if note_name not in NOTES:
-        # Try finding it directly
-        if note_name in NOTES:
-            return NOTES.index(note_name)
         raise ValueError(f"Invalid note name: {note_name}")
-    return NOTES.index(note_name)
 
 def get_scale_notes(root_note, scale_type, start_octave=3, end_octave=5):
     """Returns a list of MIDI numbers for the scale across specified octaves."""
