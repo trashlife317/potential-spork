@@ -1,6 +1,22 @@
 
 NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
+# Pre-calculate note indices for O(1) lookup
+NOTE_TO_INDEX = {}
+for _i, _note in enumerate(NOTES):
+    NOTE_TO_INDEX[_note] = _i
+    NOTE_TO_INDEX[_note.lower()] = _i
+    NOTE_TO_INDEX[_note.upper()] = _i
+
+# Add flat equivalents
+_FLAT_MAP = {
+    'Db': 1, 'Eb': 3, 'Gb': 6, 'Ab': 8, 'Bb': 10
+}
+for _flat_note, _idx in _FLAT_MAP.items():
+    NOTE_TO_INDEX[_flat_note] = _idx
+    NOTE_TO_INDEX[_flat_note.lower()] = _idx
+    NOTE_TO_INDEX[_flat_note.upper()] = _idx
+
 # Scale intervals (semitones from root)
 SCALES = {
     'major': [0, 2, 4, 5, 7, 9, 11],
@@ -15,25 +31,16 @@ SCALES = {
 
 def get_note_index(note_name):
     """Returns the index of the note in the chromatic scale (0-11)."""
-    # Normalize (e.g., Db -> C#)
-    norm_map = {'DB':'C#', 'EB':'D#', 'GB':'F#', 'AB':'G#', 'BB':'A#',
-                'Db':'C#', 'Eb':'D#', 'Gb':'F#', 'Ab':'G#', 'Bb':'A#'}
+    # Fast path O(1)
+    if note_name in NOTE_TO_INDEX:
+        return NOTE_TO_INDEX[note_name]
 
-    # Handle simple flats
-    if len(note_name) == 2 and note_name[1] == 'b':
-         if note_name in norm_map:
-             note_name = norm_map[note_name]
+    # Fallback for mixed case (e.g. 'dB')
+    capitalized = note_name.capitalize()
+    if capitalized in NOTE_TO_INDEX:
+        return NOTE_TO_INDEX[capitalized]
 
-    note_name = note_name.capitalize()
-    if note_name in norm_map:
-        note_name = norm_map[note_name]
-
-    if note_name not in NOTES:
-        # Try finding it directly
-        if note_name in NOTES:
-            return NOTES.index(note_name)
-        raise ValueError(f"Invalid note name: {note_name}")
-    return NOTES.index(note_name)
+    raise ValueError(f"Invalid note name: {note_name}")
 
 def get_scale_notes(root_note, scale_type, start_octave=3, end_octave=5):
     """Returns a list of MIDI numbers for the scale across specified octaves."""
