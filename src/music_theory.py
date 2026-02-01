@@ -13,27 +13,46 @@ SCALES = {
     'blues': [0, 3, 5, 6, 7, 10] # Minor Blues
 }
 
+# Pre-computed lookup for O(1) note index retrieval.
+# Handles sharp/flat equivalents and case variations.
+NOTE_TO_INDEX = {
+    # Naturals
+    'C': 0, 'c': 0,
+    'D': 2, 'd': 2,
+    'E': 4, 'e': 4,
+    'F': 5, 'f': 5,
+    'G': 7, 'g': 7,
+    'A': 9, 'a': 9,
+    'B': 11, 'b': 11,
+
+    # Sharps
+    'C#': 1, 'c#': 1,
+    'D#': 3, 'd#': 3,
+    'F#': 6, 'f#': 6,
+    'G#': 8, 'g#': 8,
+    'A#': 10, 'a#': 10,
+
+    # Flats (mapped to Sharp indices)
+    'Db': 1, 'db': 1, 'DB': 1,
+    'Eb': 3, 'eb': 3, 'EB': 3,
+    'Gb': 6, 'gb': 6, 'GB': 6,
+    'Ab': 8, 'ab': 8, 'AB': 8,
+    'Bb': 10, 'bb': 10, 'BB': 10,
+}
+
 def get_note_index(note_name):
     """Returns the index of the note in the chromatic scale (0-11)."""
-    # Normalize (e.g., Db -> C#)
-    norm_map = {'DB':'C#', 'EB':'D#', 'GB':'F#', 'AB':'G#', 'BB':'A#',
-                'Db':'C#', 'Eb':'D#', 'Gb':'F#', 'Ab':'G#', 'Bb':'A#'}
+    # Fast path: O(1) lookup
+    if note_name in NOTE_TO_INDEX:
+        return NOTE_TO_INDEX[note_name]
 
-    # Handle simple flats
-    if len(note_name) == 2 and note_name[1] == 'b':
-         if note_name in norm_map:
-             note_name = norm_map[note_name]
+    # Fallback: Handle weird casing like 'dB' or 'csharp' via normalization
+    # This keeps backward compatibility with previous robust parsing
+    normalized = note_name.capitalize()
+    if normalized in NOTE_TO_INDEX:
+        return NOTE_TO_INDEX[normalized]
 
-    note_name = note_name.capitalize()
-    if note_name in norm_map:
-        note_name = norm_map[note_name]
-
-    if note_name not in NOTES:
-        # Try finding it directly
-        if note_name in NOTES:
-            return NOTES.index(note_name)
-        raise ValueError(f"Invalid note name: {note_name}")
-    return NOTES.index(note_name)
+    raise ValueError(f"Invalid note name: {note_name}")
 
 def get_scale_notes(root_note, scale_type, start_octave=3, end_octave=5):
     """Returns a list of MIDI numbers for the scale across specified octaves."""
@@ -53,15 +72,6 @@ def get_scale_notes(root_note, scale_type, start_octave=3, end_octave=5):
     # Loop through octaves
     for octave in range(start_octave, end_octave + 1):
         # MIDI note 0 is C-1. C4 is 60.
-        # C0 is 12.
-        # root_idx 0 (C) at octave 3 -> C3 -> 48?
-        # Standard: Middle C = C4 = 60.
-        # C(-1) = 0.
-        # C0 = 12
-        # C1 = 24
-        # C2 = 36
-        # C3 = 48
-        # C4 = 60
         root_midi = root_idx + (octave + 1) * 12
         for interval in intervals:
             midi_note = root_midi + interval
