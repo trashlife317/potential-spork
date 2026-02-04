@@ -13,27 +13,46 @@ SCALES = {
     'blues': [0, 3, 5, 6, 7, 10] # Minor Blues
 }
 
+def _build_note_index_map():
+    mapping = {}
+    # Standard notes
+    for i, note in enumerate(NOTES):
+        mapping[note] = i
+        mapping[note.lower()] = i
+        mapping[note.upper()] = i
+
+    # Common flat equivalents mapping to sharp indices
+    # Db->C#(1), Eb->D#(3), Gb->F#(6), Ab->G#(8), Bb->A#(10)
+    flats = {
+        'Db': 1, 'Eb': 3, 'Gb': 6, 'Ab': 8, 'Bb': 10
+    }
+
+    for flat_note, idx in flats.items():
+        mapping[flat_note] = idx
+        mapping[flat_note.lower()] = idx
+        mapping[flat_note.upper()] = idx
+
+    return mapping
+
+NOTE_TO_INDEX = _build_note_index_map()
+
 def get_note_index(note_name):
-    """Returns the index of the note in the chromatic scale (0-11)."""
-    # Normalize (e.g., Db -> C#)
-    norm_map = {'DB':'C#', 'EB':'D#', 'GB':'F#', 'AB':'G#', 'BB':'A#',
-                'Db':'C#', 'Eb':'D#', 'Gb':'F#', 'Ab':'G#', 'Bb':'A#'}
+    """
+    Returns the index of the note in the chromatic scale (0-11).
+    Optimized for O(1) lookup.
+    """
+    try:
+        return NOTE_TO_INDEX[note_name]
+    except KeyError:
+        # Fallback for weird casing that might be handled by capitalize() in original
+        # but likely covered by .upper()/.lower() in our map.
+        # If strict matching fails, we try one normalization just in case,
+        # though our map should be comprehensive for standard inputs.
 
-    # Handle simple flats
-    if len(note_name) == 2 and note_name[1] == 'b':
-         if note_name in norm_map:
-             note_name = norm_map[note_name]
+        # Check if it's a mixed case issue that wasn't covered (e.g. 'd B' is unlikely).
+        # The map covers 'db', 'Db', 'DB'.
 
-    note_name = note_name.capitalize()
-    if note_name in norm_map:
-        note_name = norm_map[note_name]
-
-    if note_name not in NOTES:
-        # Try finding it directly
-        if note_name in NOTES:
-            return NOTES.index(note_name)
         raise ValueError(f"Invalid note name: {note_name}")
-    return NOTES.index(note_name)
 
 def get_scale_notes(root_note, scale_type, start_octave=3, end_octave=5):
     """Returns a list of MIDI numbers for the scale across specified octaves."""
